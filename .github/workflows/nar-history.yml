@@ -31,7 +31,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nar-horse-history
+          
           path: |
-            processed/
+            data/processed/
             output/
-          if-no-files-found: warn
+          if-no-files-found: error
