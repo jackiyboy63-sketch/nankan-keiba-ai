@@ -1,6 +1,7 @@
-"""Download monthly NAR race ZIP archives from publicly linked official pages.
+"""Download verified NAR monthly race archives from the official website.
 
-Fail closed if a direct archive link cannot be found. No fabricated endpoints.
+Uses the publicly linked monthly RaceDataDownload endpoint. The endpoint may
+change; non-ZIP responses are reported rather than stored as ZIPs.
 """
 import argparse
 import datetime as dt
@@ -11,33 +12,50 @@ import time
 import zipfile
 from html.parser import HTMLParser
 from pathlib import Path
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlencode, urljoin, urlparse
 from urllib.request import Request, urlopen
 
 BASE = 'https://www.keiba.go.jp'
-UA = 'nankan-keiba-ai/0.8 (monthly official archive downloader)'
+ENDPOINT = BASE + '/KeibaWeb/DataDownload/RaceDataDownload'
+UA = 'Mozilla/5.0 (compatible; NankanKeibaAI/1.0)'
 MAX_BYTES = 50_000_000
+
 
 class Links(HTMLParser):
     def __init__(self):
         super().__init__()
         self.urls = []
+
     def handle_starttag(self, tag, attrs):
-        if tag.lower() in ('a', 'button', 'form'):
+        if tag.lower() in ('a', 'form', 'button'):
             d = dict(attrs)
-            for k in ('href', 'data-url', 'data-href', 'action'):
-                if d.get(k):
-                    self.urls.append(d[k])
+            for key in ('href', 'action', 'data-url', 'data-href'):
+                if d.get(key):
+                    self.urls.append(d[key])
+
 
 def fetch(url):
-    req = Request(url, headers={'User-Agent': UA, 'Accept': 'text/html,application/zip,*/*'})
-    with urlopen(req, timeout=30) as r:
-        if urlparse(r.url).hostname not in ('www.keiba.go.jp', 'keiba.go.jp'):
-            raise ValueError('Unexpected download host: ' + r.url)
-        data = r.read(MAX_BYTES + 1)
+    req = Request(url, headers={'User-Agent': UA, 'Accept': 'application/zip,application/octet-stream,text/html,*/*'})
+    with urlopen(req, timeout=40) as response:
+        final = response.geturl()
+        if urlparse(final).hostname not in ('www.keiba.go.jp', 'keiba.go.jp'):
+            raise ValueError('Unexpected redirect host: ' + final)
+        data = response.read(MAX_BYTES + 1)
         if len(data) > MAX_BYTES:
-            raise ValueError('Archive exceeds size limit')
+            raise ValueError('Response too large')
         return data
+
+
+def valid_zip(data):
+    if not zipfile.is_zipfile(io.BytesIO(data)):
+        return False
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        if archive.testzip() is not None:
+            return False
+        names = [Path(item.filename).name.lower() for item in archive.infolist()]
+        return (any('horselist' in name and name.endswith('.csv') for name in names)
+                and any('racelist' in name and name.endswith('.csv') for name in names))
+
 
 def month_iter(start, end):
     y, m = start
@@ -45,90 +63,74 @@ def month_iter(start, end):
         yield y, m
         y, m = (y + 1, 1) if m == 12 else (y, m + 1)
 
-def month_before(d):
-    return (d.year - 1, 12) if d.month == 1 else (d.year, d.month - 1)
 
 def shift_month(y, m, delta):
     v = y * 12 + m - 1 + delta
-    return (v // 12, v % 12 + 1)
+    return v // 12, v % 12 + 1
 
-def discover(y, m):
-    page = f'{BASE}/KeibaWeb/MonthlySchedule/MonthlyScheduleTop?k_year={y}&k_month={m}'
-    html = fetch(page).decode('utf-8', errors='replace')
+
+def candidates(y, m):
+    page = ENDPOINT + '?' + urlencode({'type': 'monthly', 'k_year': y, 'k_month': m})
+    # The official download URL may return the archive itself.
+    data = fetch(page)
+    if valid_zip(data):
+        return data
+    # Some versions return HTML with a link to the archive.
+    if not data.lstrip().startswith((b'<!DOCTYPE', b'<!doctype', b'<html', b'<HTML')):
+        raise ValueError('Official endpoint did not return a valid race ZIP or HTML')
+    html = data.decode('utf-8', errors='replace')
     parser = Links()
     parser.feed(html)
-    # Also inspect script literals for ZIP URLs. Dynamic JS download APIs are
-    # deliberately NOT guessed: unsupported months are reported for review.
     raw = parser.urls + re.findall(r'''["']([^"']+?\.zip(?:\?[^"']*)?)["']''', html, re.I)
-    urls = []
-    for s in raw:
-        u = urljoin(page, s.replace('&amp;', '&'))
-        parsed = urlparse(u)
-        if parsed.hostname not in ('www.keiba.go.jp', 'keiba.go.jp'):
+    for item in raw:
+        url = urljoin(page, item.replace('&amp;', '&'))
+        if urlparse(url).hostname not in ('www.keiba.go.jp', 'keiba.go.jp'):
             continue
-        if not re.search(r'\.zip(?:$|\?)', u, re.I):
+        if not re.search(r'\.zip(?:$|\?)', url, re.I) or re.search('odds?', url, re.I):
             continue
-        if re.search(r'odds?', u, re.I):
-            continue
-        if u not in urls:
-            urls.append(u)
-    return urls
+        try:
+            result = fetch(url)
+            if valid_zip(result):
+                return result
+        except Exception as exc:
+            print('Candidate rejected:', type(exc).__name__, str(exc), file=sys.stderr)
+    raise ValueError('No valid race ZIP found at official monthly download endpoint')
 
-def valid_zip(data):
-    if not zipfile.is_zipfile(io.BytesIO(data)):
-        return False
-    with zipfile.ZipFile(io.BytesIO(data)) as z:
-        names = [x.filename.lower().split('/')[-1] for x in z.infolist()]
-        return any('horselist' in n and n.endswith('.csv') for n in names) and any('racelist' in n and n.endswith('.csv') for n in names)
 
 def main():
-    p = argparse.ArgumentParser()
-    p.add_argument('--months', type=int, default=24)
-    p.add_argument('--output', default='data')
-    args = p.parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--months', type=int, default=24)
+    parser.add_argument('--output', default='data')
+    args = parser.parse_args()
     if not 1 <= args.months <= 120:
-        p.error('--months must be between 1 and 120')
+        parser.error('--months must be 1..120')
     today = dt.datetime.now(dt.timezone(dt.timedelta(hours=9))).date()
-    last = month_before(today)  # only completed calendar months
+    last = shift_month(today.year, today.month, -1)
     first = shift_month(*last, -(args.months - 1))
-    out = Path(args.output)
-    out.mkdir(parents=True, exist_ok=True)
+    output = Path(args.output)
+    output.mkdir(parents=True, exist_ok=True)
     failures = []
     for y, m in month_iter(first, last):
         prefix = f'{y}{m:02d}_'
-        existing = list(out.glob(prefix + '*_race.zip')) + list(Path('.').glob(prefix + '*_race.zip'))
+        existing = list(output.glob(prefix + '*_race.zip')) + list(Path('.').glob(prefix + '*_race.zip'))
         if existing:
-            print(f'SKIP {y}-{m:02d}: already exists')
+            print(f'SKIP {y}-{m:02d}: existing archive')
             continue
         try:
-            candidates = discover(y, m)
-            if not candidates:
-                raise ValueError('No official ZIP link found in static monthly page (may be JavaScript-generated)')
-            saved = False
-            for url in candidates:
-                try:
-                    data = fetch(url)
-                    if not valid_zip(data):
-                        continue
-                    name = Path(urlparse(url).path).name
-                    if not re.fullmatch(r'\d{6}_\d+_race\.zip', name, re.I):
-                        name = f'{y}{m:02d}_official_race.zip'
-                    (out / name).write_bytes(data)
-                    print(f'SAVED {name}: {len(data)} bytes')
-                    saved = True
-                    break
-                except Exception as e:
-                    print(f'Candidate failed: {type(e).__name__}: {e}')
-            if not saved:
-                raise ValueError('No valid race ZIP among discovered links')
-        except Exception as e:
-            failures.append(f'{y}-{m:02d}: {e}')
-            print('FAILED', failures[-1], file=sys.stderr)
-        time.sleep(0.4)
+            data = candidates(y, m)
+            name = f'{y}{m:02d}_official_race.zip'
+            (output / name).write_bytes(data)
+            print(f'SAVED {name}: {len(data)} bytes')
+        except Exception as exc:
+            msg = f'{y}-{m:02d}: {type(exc).__name__}: {exc}'
+            failures.append(msg)
+            print('FAILED', msg, file=sys.stderr)
+        time.sleep(0.3)
     if failures:
-        print('\nUncollected months:\n' + '\n'.join(failures), file=sys.stderr)
+        print('Uncollected months:\n' + '\n'.join(failures), file=sys.stderr)
         return 1
     return 0
+
 
 if __name__ == '__main__':
     raise SystemExit(main())
