@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from nar_import import read_uploads, historical_scores
+from nar_import_v06 import read_uploads, historical_scores
 
 st.set_page_config(page_title='南関競馬AI v0.6', layout='wide')
 st.title('南関競馬AI v0.6')
