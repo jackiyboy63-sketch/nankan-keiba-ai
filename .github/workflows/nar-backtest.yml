@@ -21,17 +21,17 @@ jobs:
           name: nar-horse-history
           path: history-data
           branch: main
-      - name: Run August 2026 backtest
+      - name: Run June 2026 backtest
         run: |
           python nar_backtest.py \
             --input history-data/data/processed/horse_history.csv \
-            --month 2026-08 \
+            --month 2026-06 \
             --min-runners 1 \
             --output-dir backtest_results
       - name: Upload backtest results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: nar-backtest-august-2026
+          name: nar-backtest-june-2026
           path: backtest_results/
           if-no-files-found: warn
