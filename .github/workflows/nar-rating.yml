@@ -38,7 +38,7 @@ jobs:
       - name: Run historical rating
         run: |
           python nar_rating.py \
-            --input history-data/horse_history.csv \
+            --input history-data/data/processed/horse_history.csv \
             --date 2026-07-31 \
             --track 川崎 \
             --race 1 \
