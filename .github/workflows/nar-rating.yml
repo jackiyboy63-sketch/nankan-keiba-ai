@@ -32,3 +32,22 @@ jobs:
 
       - name: Inspect rating options
         run: python nar_rating.py --help
+        
+
+      
+      - name: Run historical rating
+        run: |
+          python nar_rating.py \
+            --input history-data/horse_history.csv \
+            --date 2026-07-31 \
+            --track 川崎 \
+            --race 1 \
+            --output rating_result.csv
+
+      - name: Upload rating result
+        uses: actions/upload-artifact@v4
+        with:
+          name: nar-rating-result
+          path: rating_result.csv
+          if-no-files-found: error
+  
