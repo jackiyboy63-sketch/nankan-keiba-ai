@@ -1,0 +1,38 @@
+name: NAR AI v1 vs v2 comparison
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install pandas numpy
+      - name: Download horse history
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: nar-history.yml
+          name: nar-horse-history
+          path: history-data
+          branch: main
+      - name: Run June and July comparisons
+        run: |
+          for month in 2026-06 2026-07; do
+            python nar_backtest_compare.py --input history-data/data/processed/horse_history.csv --month "$month" --output-dir "comparison_results/$month"
+          done
+      - name: Upload comparison results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nar-ai-comparison-2026-06-07
+          path: comparison_results/
+          if-no-files-found: warn
