@@ -5,6 +5,7 @@ import argparse
 from pathlib import Path
 import pandas as pd
 import numpy as np
+from nar_validation import prepare, validate_entries, parse_seconds
 
 TRACKS = {'大井','船橋','川崎','浦和'}
 
@@ -12,32 +13,17 @@ def number(x):
     return pd.to_numeric(x, errors='coerce')
 
 def time_seconds(x):
-    """NAR race time e.g. 1314 -> 1:31.4, 598 -> 0:59.8."""
-    if pd.isna(x): return np.nan
-    s=str(x).strip()
-    if s.endswith('.0'): s=s[:-2]
-    if not s.isdigit(): return np.nan
-    v=int(s)
-    return (v//1000)*60+(v%1000)/10 if v>=1000 else v/10
+    return parse_seconds(x)
 
 def mean_or_nan(s):
     s=pd.to_numeric(s,errors='coerce').dropna()
     return float(s.mean()) if len(s) else np.nan
 
 def rating(df, date, track, race):
-    d=df.copy()
-    required={'race_date','着順','距離','頭数','上がり3F','タイム','競馬場','レース番号','horse_key','race_key','父馬名','馬番','馬名'}
-    missing=required-set(d.columns)
-    if missing: raise ValueError('入力CSVに必要な列がありません: '+', '.join(sorted(missing)))
-    d['race_date']=pd.to_datetime(d['race_date'],errors='coerce')
-    d['着順_num']=number(d['着順'])
-    d['距離_num']=number(d['距離'])
-    d['頭数_num']=number(d['頭数'])
-    d['上がり_num']=number(d['上がり3F'])
-    d['seconds']=d['タイム'].map(time_seconds)
+    d=prepare(df)
     target_date=pd.Timestamp(date)
     entries=d[(d.race_date==target_date)&(d['競馬場']==track)&(number(d['レース番号'])==race)].copy()
-    if entries.empty: raise ValueError('対象レースが履歴にありません。現在の出走表は別途取り込みが必要です。')
+    validate_entries(entries)
     prior=d[(d.race_date<target_date)&(d.race_date>=target_date-pd.Timedelta(days=730))].copy()
     # Historical labels are deliberately excluded from feature construction.
     # Race entries on the target date are only used for horse identity, track and distance.
@@ -45,8 +31,8 @@ def rating(df, date, track, race):
     distances=number(entries['距離']).dropna()
     if distances.empty: raise ValueError('対象レースの距離が取得できません。')
     distance=distances.iloc[0]
-    race_min=prior.groupby('race_key')['seconds'].min()
-    race_last=prior.groupby('race_key')['上がり_num'].median()
+    race_min=prior[prior['着順_num'].eq(1)].groupby('race_key')['seconds'].min()
+    race_last=prior.loc[prior['上がり_num'].gt(0)].groupby('race_key')['上がり_num'].median()
     for _,e in entries.iterrows():
         h=prior[prior.horse_key==e.horse_key].sort_values('race_date',ascending=False).head(8)
         same=h[(h['競馬場']==track)&(h['距離_num']==distance)]
@@ -88,7 +74,7 @@ def rating(df, date, track, race):
         result.append({'馬番':e['馬番'],'馬名':e['馬名'],'評価点':round(score,1),'確かさ(%)':available,
                        '過去走数':len(h),'コース距離':fit,'近走':recent,'時計':clock,'末脚':closing,'血統':blood,'安定性':stability,
                        '実際の着順(検証用)':e['着順']})
-    return pd.DataFrame(result).sort_values(['評価点','確かさ(%)'],ascending=False)
+    return pd.DataFrame(result).assign(_tie=lambda x: pd.to_numeric(x['馬番'])).sort_values(['評価点','確かさ(%)','_tie'],ascending=[False,False,True]).drop(columns='_tie')
 
 def main():
     p=argparse.ArgumentParser()

@@ -5,6 +5,7 @@ Example: python nar_backtest.py --input data/processed/horse_history.csv --month
 import argparse
 from pathlib import Path
 import pandas as pd
+from nar_validation import prepare, PreparedHistory, validate_results
 from nar_rating import rating as rating_v1, TRACKS
 from nar_rating_v2 import rating as rating_v2
 
@@ -35,6 +36,7 @@ def main():
     missing_cols = needed - set(df.columns)
     if missing_cols:
         raise ValueError(f'Missing columns: {sorted(missing_cols)}')
+    prepared = PreparedHistory(prepare(df))
     dates = pd.to_datetime(df['race_date'], errors='coerce')
     month = pd.Period(a.month, freq='M')
     subset = df.loc[(dates.dt.to_period('M') == month) & df['競馬場'].isin(TRACKS)].copy()
@@ -51,7 +53,10 @@ def main():
 
     for i, (date, track, race) in enumerate(keys, 1):
         try:
-            rated = rating(df, date, track, race).reset_index(drop=True)
+            raw = prepared.frame
+            entries = raw[(raw.race_date == pd.Timestamp(date)) & raw['競馬場'].eq(track) & pd.to_numeric(raw['レース番号']).eq(race)]
+            validate_results(entries)
+            rated = rating(prepared, date, track, race).reset_index(drop=True)
             n = len(rated)
             if n < a.min_runners:
                 failures.append({'日付': date, '競馬場': track, 'R': race,
@@ -89,6 +94,7 @@ def main():
             summaries.append({'日付': date, '競馬場': track, 'R': race, '頭数': n,
                               '評価1位勝利': int(top_finish == 1),
                               '評価1位3着以内': int(top_finish <= 3),
+                              '実際の3着内頭数': int(finish.le(3).sum()),
                               '評価上位3頭の3着内頭数': int(top3['3着以内'].sum()),
                               '評価上位4頭の3着内頭数': int(top4['3着以内'].sum()),
                               '勝ち馬AI順位': winner_rank,
@@ -121,15 +127,17 @@ def main():
                                   'AI順位', '実際の着順', '評価点', '確かさ(%)', '過去走数']).to_csv(
         output / 'prediction_misses.csv', index=False, encoding='utf-8-sig')
 
+    if races.empty:
+        raise SystemExit('有効な検証レースなし。excluded_races.csvを確認してください')
     aggregate = []
     for track in ['全場'] + sorted(TRACKS):
         part = races if track == '全場' else (races[races['競馬場'] == track] if not races.empty else races)
         n = len(part)
         aggregate.append({'競馬場': track, '検証レース数': n,
                           '評価1位勝率(%)': round(100 * part['評価1位勝利'].mean(), 2) if n else None,
-                          '評価1位複勝率(%)': round(100 * part['評価1位3着以内'].mean(), 2) if n else None,
-                          '上位3頭の3着内捕捉率(%)': round(100 * part['評価上位3頭の3着内頭数'].sum() / (3*n), 2) if n else None,
-                          '上位4頭の3着内捕捉率(%)': round(100 * part['評価上位4頭の3着内頭数'].sum() / (3*n), 2) if n else None})
+                          '評価1位3着内率(%)': round(100 * part['評価1位3着以内'].mean(), 2) if n else None,
+                          '上位3頭の3着内捕捉率(%)': round(100 * part['評価上位3頭の3着内頭数'].sum() / part['実際の3着内頭数'].sum(), 2) if n else None,
+                          '上位4頭の3着内捕捉率(%)': round(100 * part['評価上位4頭の3着内頭数'].sum() / part['実際の3着内頭数'].sum(), 2) if n else None})
     pd.DataFrame(aggregate).to_csv(output / 'overall_summary.csv', index=False, encoding='utf-8-sig')
     print('Completed:', len(races), 'Excluded:', len(failures), 'Miss records:', len(misses), 'Output:', output)
 

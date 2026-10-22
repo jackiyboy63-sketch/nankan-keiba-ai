@@ -29,7 +29,7 @@ def normalize(s):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input', default='data')
+    parser.add_argument('--input', default='.')
     parser.add_argument('--output', default='data/processed')
     args = parser.parse_args()
     out = Path(args.output)
@@ -55,6 +55,7 @@ def main():
                     required = KEY + (IDENTITY + ['馬番', '着順'] if kind == 'horse' else ['距離', '馬場'])
                     if any(c not in frame.columns for c in required):
                         raise ValueError(f'Missing required columns: {archive.name}/{member}')
+                    frame['競馬場'] = normalize(frame['競馬場'])
                     frame = frame[frame['競馬場'].isin(VENUES)].copy()
                     frame['_source'] = archive.name + '/' + member
                     (horse_frames if kind == 'horse' else race_frames).append(frame)
@@ -72,6 +73,7 @@ def main():
     # Require complete identity: never silently merge ambiguous horses.
     valid = horses[IDENTITY].ne('').all(axis=1)
     excluded = horses.loc[~valid].copy()
+    identity_bad_races = set(map('|'.join, excluded[KEY].itertuples(index=False, name=None)))
     horses = horses.loc[valid].copy()
     horses['horse_key'] = horses[IDENTITY].agg('|'.join, axis=1)
     horses['race_key'] = horses[KEY].agg('|'.join, axis=1)
@@ -86,8 +88,12 @@ def main():
     conflicting_keys = conflict[conflict].index
     bad = pd.MultiIndex.from_frame(horses[duplicate_key]).isin(conflicting_keys)
     conflicts = horses.loc[bad].copy()
-    horses = horses.loc[~bad].drop_duplicates(subset=duplicate_key, keep='first')
-    race_conflict = races.groupby('race_key')[['距離', '馬場']].nunique(dropna=False).gt(1).any(axis=1)
+    horse_bad_races = set(conflicts['race_key']) | identity_bad_races
+    horses = horses.loc[~horses['race_key'].isin(horse_bad_races)].drop_duplicates(subset=duplicate_key, keep='first')
+    meta_cols = [c for c in ['距離','馬場','頭数','回り','芝ダート区分'] if c in races.columns]
+    for col in meta_cols:
+        races[col] = normalize(races[col])
+    race_conflict = races.groupby('race_key')[meta_cols].nunique(dropna=False).gt(1).any(axis=1)
     conflicting_races = set(race_conflict[race_conflict].index)
     races = races.loc[~races['race_key'].isin(conflicting_races)].drop_duplicates('race_key')
     # Validate date; historical records must be sorted strictly by race date.
@@ -95,8 +101,11 @@ def main():
     bad_date = horses['race_date'].isna()
     excluded = pd.concat([excluded, horses.loc[bad_date]], ignore_index=True)
     horses = horses.loc[~bad_date]
+    missing_race_keys = set(horses['race_key']) - set(races['race_key'])
+    horses = horses.loc[~horses['race_key'].isin(conflicting_races)]
     race_info = races[['race_key', '距離', '馬場'] + [c for c in ['天候', '回り', '芝ダート区分', '頭数'] if c in races.columns]]
-    history = horses.merge(race_info, on='race_key', how='left', validate='many_to_one', suffixes=('', '_race'))
+    history = horses.merge(race_info, on='race_key', how='inner', validate='many_to_one', suffixes=('', '_race'))
+    pd.DataFrame({'race_key': sorted(horse_bad_races | conflicting_races | missing_race_keys)}).to_csv(out / 'quarantined_races.csv', index=False, encoding='utf-8-sig')
     history = history.sort_values(['horse_key', 'race_date', 'レース番号', 'race_key'])
     history['prior_starts'] = history.groupby('horse_key').cumcount()
     # This is an archival history, NOT a pre-race feature table: race-day

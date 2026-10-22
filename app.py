@@ -8,6 +8,7 @@ from nar_import_v06 import read_uploads, historical_scores
 st.set_page_config(page_title='南関競馬AI v0.7', layout='wide')
 st.title('南関競馬AI v0.7')
 st.caption('GitHub内の公式ZIP・CSVを自動読み込み。人気・オッズは能力評価に使用しません。')
+st.info('過去結果データを分析する画面です。発走前出走表との接続、払戻検証済みモデルの運用は未実装です。表示の暫定点と nar_rating.py / nar_rating_v2.py の評価点は別方式です。')
 
 @st.cache_data(show_spinner='保存済み競馬データを読み込み中…')
 def load_local_data():
