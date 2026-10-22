@@ -4,6 +4,7 @@
 import argparse
 from pathlib import Path
 import numpy as np
+from nar_validation import prepare, validate_entries, parse_seconds
 import pandas as pd
 
 TRACKS = {'大井', '船橋', '川崎', '浦和'}
@@ -18,26 +19,13 @@ def finish(x):
     return avg(1 - (x['着順_num']-1)/(x['頭数_num']-1))
 
 def seconds(x):
-    if pd.isna(x): return np.nan
-    s = str(x).strip()
-    if s.endswith('.0'): s=s[:-2]
-    if not s.isdigit(): return np.nan
-    n = int(s)
-    return (n//1000)*60+(n%1000)/10 if n >= 1000 else n/10
+    return parse_seconds(x)
 
 def rating(df, date, track, race):
-    required = {'race_date','着順','距離','頭数','上がり3F','タイム','競馬場','レース番号',
-                'horse_key','race_key','父馬名','母父馬名','馬番','馬名','馬場'}
-    missing = required-set(df.columns)
-    if missing: raise ValueError('不足列: '+', '.join(sorted(missing)))
-    d=df.copy()
-    d['race_date']=pd.to_datetime(d['race_date'],errors='coerce')
-    for col,new in [('着順','着順_num'),('距離','距離_num'),('頭数','頭数_num'),('上がり3F','上がり_num')]:
-        d[new]=pd.to_numeric(d[col],errors='coerce')
-    d['seconds']=d['タイム'].map(seconds)
+    d=prepare(df)
     target=pd.Timestamp(date)
     entries=d[(d.race_date==target)&(d['競馬場']==track)&(pd.to_numeric(d['レース番号'],errors='coerce')==race)].copy()
-    if entries.empty: raise ValueError('対象レースなし。過去結果を使うバックテスト専用です。')
+    validate_entries(entries)
     distance=entries['距離_num'].dropna()
     if distance.empty: raise ValueError('対象距離なし')
     distance=distance.iloc[0]
@@ -45,7 +33,7 @@ def rating(df, date, track, race):
     prior=d[(d.race_date<target)&(d.race_date>=target-pd.Timedelta(days=730))].copy()
     # レース内基準は過去レースのみ。勝ち馬の時計が欠測なら時計指標は欠測。
     winners=prior[prior['着順_num']==1].groupby('race_key')['seconds'].min()
-    med_last=prior.groupby('race_key')['上がり_num'].median()
+    med_last=prior.loc[prior['上がり_num'].gt(0)].groupby('race_key')['上がり_num'].median()
     results=[]
     for _,e in entries.iterrows():
         h=prior[prior.horse_key==e.horse_key].sort_values('race_date',ascending=False).head(8)
@@ -81,7 +69,7 @@ def rating(df, date, track, race):
         score=sum(WEIGHTS[k]*(v if pd.notna(v) else 0.5) for k,v in vals.items())
         results.append({'馬番':e['馬番'],'馬名':e['馬名'],'評価点':round(score,2),'確かさ(%)':coverage,
                         '過去走数':len(h),**vals,'実際の着順(検証用)':e['着順']})
-    return pd.DataFrame(results).sort_values(['評価点','確かさ(%)'],ascending=False)
+    return pd.DataFrame(results).assign(_tie=lambda x: pd.to_numeric(x['馬番'])).sort_values(['評価点','確かさ(%)','_tie'],ascending=[False,False,True]).drop(columns='_tie')
 
 def main():
     p=argparse.ArgumentParser()

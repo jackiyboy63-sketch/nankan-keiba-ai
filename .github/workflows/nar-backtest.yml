@@ -13,18 +13,13 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install dependencies
-        run: pip install pandas numpy
-      - name: Download horse history
-        uses: dawidd6/action-download-artifact@v6
-        with:
-          workflow: nar-history.yml
-          name: nar-horse-history
-          path: history-data
-          branch: main
+        run: pip install 'pandas>=2.1,<3' numpy
+      - name: Build history from checked-out archives
+        run: python nar_history.py --input . --output data/processed
       - name: Run July 2026 backtest
         run: |
           python nar_backtest.py \
-            --input history-data/data/processed/horse_history.csv \
+            --input data/processed/horse_history.csv \
             --month 2026-07 \
             --min-runners 1 \
             --output-dir backtest_results
