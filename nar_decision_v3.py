@@ -36,7 +36,7 @@ def validate_snapshot(df):
     if d[['score','win_odds','place_odds']].isna().any().any() or not np.isfinite(d[['score','win_odds','place_odds']].to_numpy()).all():
         raise ValueError('invalid score/odds')
     if (d[['win_odds','place_odds']] < 1).any().any(): raise ValueError('odds below 1')
-    if d.source.astype(str).str.strip().eq('').any(): raise ValueError('missing source')
+    if d.source.isna().any() or d.source.astype(str).str.strip().eq('').any(): raise ValueError('missing source')
     if d.groupby('race_id')['cutoff_at'].nunique().gt(1).any(): raise ValueError('inconsistent cutoff')
     return d
 
@@ -70,6 +70,10 @@ def calibrated_probability(scores, model):
 
 def decide(snapshot, calibration, *, as_of, daily_cap=5000, min_edge=0.05, stake=100, already_spent=0):
     """Conservative single-horse win/place EV selection. No calibrated model => no bet."""
+    if stake <= 0 or stake % 100 or daily_cap < 0 or daily_cap % 100 or already_spent < 0 or already_spent % 100:
+        raise ValueError('budget/stake must be nonnegative 100-yen units with positive stake')
+    if not np.isfinite(min_edge) or min_edge < 0:
+        raise ValueError('invalid minimum edge')
     d=validate_snapshot(snapshot)
     now=parse_time(as_of)
     if (d.snapshot_at > now).any() or (d.cutoff_at <= now).any(): raise ValueError('as_of outside valid pre-race window')
@@ -106,12 +110,26 @@ def walk_forward(snapshots, results, *, min_train_races=30, daily_cap=5000, min_
     if not needed.issubset(results): raise ValueError('missing result columns')
     r=results.copy()
     if r.duplicated(['race_id','horse_no']).any(): raise ValueError('duplicate result keys')
+    if r[['race_id','horse_no']].isna().any().any(): raise ValueError('missing result keys')
     for c in ['won','placed']:
-        if not pd.to_numeric(r[c],errors='coerce').isin([0,1]).all(): raise ValueError('invalid result labels')
+        r[c]=pd.to_numeric(r[c],errors='coerce')
+        if not r[c].isin([0,1]).all(): raise ValueError('invalid result labels')
+    if (r.won > r.placed).any(): raise ValueError('winner must also place')
+    for c, label in [('win_return_100','won'),('place_return_100','placed')]:
+        r[c]=pd.to_numeric(r[c],errors='coerce')
+        if not np.isfinite(r[c]).all() or (r[c]<0).any() or (r[c]%1 != 0).any():
+            raise ValueError('invalid result payout')
+        if (r[c].gt(0) != r[label].eq(1)).any(): raise ValueError('label/payout mismatch')
+    r['race_date']=pd.to_datetime(r.race_date,errors='coerce')
+    if r.race_date.isna().any(): raise ValueError('invalid race date')
+    matched=s[['race_id','horse_no']].merge(r[['race_id','horse_no']],on=['race_id','horse_no'],how='left',indicator=True,validate='one_to_one')
+    if matched['_merge'].ne('both').any(): raise ValueError('missing runner results')
     if not set(s.race_id).issubset(set(r.race_id)): raise ValueError('missing result races')
     s=s.merge(r[['race_id','horse_no','race_date']],on=['race_id','horse_no'],validate='one_to_one')
     s['race_date']=pd.to_datetime(s.race_date).dt.date
     if s.groupby('race_id').race_date.nunique().gt(1).any(): raise ValueError('inconsistent race dates')
+    local_dates=s.cutoff_at.dt.tz_convert('Asia/Tokyo').dt.date
+    if s.race_date.ne(local_dates).any(): raise ValueError('race date differs from Japan cutoff date')
     ledger=[];skips=[]
     for day in sorted(s.race_date.unique()):
         train=r[pd.to_datetime(r.race_date).dt.date<day].merge(snapshots[['race_id','horse_no','score']],on=['race_id','horse_no'],how='inner',validate='one_to_one')
@@ -125,12 +143,15 @@ def walk_forward(snapshots, results, *, min_train_races=30, daily_cap=5000, min_
         day_snap=s[s.race_date==day]
         # Each race uses its latest stored snapshot time as simulated decision instant.
         spent=0
-        for race,g in day_snap.groupby('race_id',sort=True):
+        ordered=sorted(day_snap.groupby('race_id',sort=False),key=lambda item:(item[1].snapshot_at.max(),str(item[0])))
+        for race,g in ordered:
             try:
                 chosen=decide(g,models,as_of=g.snapshot_at.max(),daily_cap=daily_cap,min_edge=min_edge,already_spent=spent)
             except ValueError as e:
                 skips.append({'date':str(day),'race_id':race,'reason':str(e)});continue
-            if chosen.empty: continue
+            if chosen.empty:
+                skips.append({'date':str(day),'race_id':race,'reason':'no qualifying EV or daily budget exhausted'})
+                continue
             frozen=chosen.merge(r,on=['race_id','horse_no'],validate='one_to_one')
             for _,b in frozen.iterrows():
                 ret=b['win_return_100'] if b['type']=='win' else b['place_return_100']
