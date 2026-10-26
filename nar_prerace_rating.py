@@ -28,9 +28,13 @@ def parse_card(html,day,venue,race):
         age=re.search(r'>\s*(?:牡|牝|セン|セ)(\d+)\s*<',block)
         birth=re.search(r'(\d{2})\.(\d{2})生',plain(block))
         if not ident or len(ancestry)<5 or not age or not birth:raise ValueError('runner identity fields unavailable')
+        stats=re.search(r'<td[^>]*>\s*全(?:&nbsp;|\s)*</td>(.*?)</tr>',block,re.S)
+        counts=re.findall(r'<td[^>]*>(.*?)</td>',stats[1],re.S) if stats else []
+        values=[plain(x).strip('-') for x in counts[:4]]
+        starts=sum(map(int,values)) if len(values)==4 and all(x.isdigit() for x in values) else None
         name=plain(horse[2]);sire,dam,bms=map(plain,ancestry[2:5]);bms=bms.strip('（）()')
         birthday=pd.Timestamp(year=int(day[:4])-int(age[1]),month=int(birth[1]),day=int(birth[2])).strftime('%Y%m%d')
-        entries.append({'馬番':int(plain(no[1])),'馬名':name,'生年月日':birthday,'父馬名':sire,'母馬名':dam,'母父馬名':bms,'official_horse_id':ident[1],'horse_key':'|'.join([name,birthday,sire,dam])})
+        entries.append({'馬番':int(plain(no[1])),'馬名':name,'生年月日':birthday,'父馬名':sire,'母馬名':dam,'母父馬名':bms,'official_declared_starts':starts,'official_horse_id':ident[1],'horse_key':'|'.join([name,birthday,sire,dam])})
     frame=pd.DataFrame(entries)
     if frame.empty or frame['馬番'].duplicated().any() or frame.official_horse_id.duplicated().any():raise ValueError('missing/duplicate card runners')
     return frame,int(distance[1]),going[1],cutoff
@@ -75,8 +79,19 @@ def rate_entries(history,entries,day,venue,race,distance,going):
         targets.append(row)
     result=rating(pd.concat([h,pd.DataFrame(targets)],ignore_index=True),day,venue,race)
     result=result.drop(columns=['実際の着順(検証用)'])
+    diagnostics=[]
+    for _,e in active.iterrows():
+        prior=h[h.horse_key.eq(e.horse_key)]
+        recent=prior[prior.race_date>=pd.Timestamp(day)-pd.Timedelta(days=730)]
+        if not recent.empty: reason='評価可能'
+        elif not prior.empty: reason='履歴不足：評価期間内の出走なし'
+        elif pd.notna(e.get('official_declared_starts')) and e.get('official_declared_starts')==0: reason='未出走：公式出走表の全成績0走'
+        elif h['馬名'].eq(e['馬名']).any(): reason='照合不一致：同名馬の識別情報が一致しない'
+        else: reason='履歴不足：収録範囲に一致する過去走なし'
+        diagnostics.append({'馬番':e['馬番'],'評価状態':reason})
     result=result.merge(active[['馬番','official_horse_id','identity_status']],on='馬番',validate='one_to_one')
-    missing=result.identity_status.eq('unmatched')
+    result=result.merge(pd.DataFrame(diagnostics),on='馬番',validate='one_to_one')
+    missing=result['評価状態'].ne('評価可能')
     result.loc[missing,['評価点','確かさ(%)']]=float('nan')
     return result.sort_values(['評価点','馬番'],ascending=[False,True],na_position='last')
 

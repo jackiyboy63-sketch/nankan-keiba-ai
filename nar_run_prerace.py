@@ -46,11 +46,11 @@ def run(venue,race,history='data/processed/horse_history.csv',output='data/prera
         ratings.to_csv(folder/'ratings.csv',index=False,encoding='utf-8-sig')
         entries.to_csv(folder/'verified_entries.csv',index=False,encoding='utf-8-sig')
         # Own schema retains both place prices; never manufacture a single v3 price.
-        snapshot=entries.merge(ratings[['馬番','評価点','確かさ(%)','identity_status']],on='馬番',how='left',validate='one_to_one')
+        snapshot=entries.merge(ratings[['馬番','評価点','確かさ(%)','identity_status','評価状態']],on='馬番',how='left',validate='one_to_one')
         snapshot['race_id']=source['race_id'];snapshot['odds_acquired_at']=receipt.isoformat();snapshot['score_generated_at']=generated.isoformat();snapshot['cutoff_at']=cutoff.isoformat()
         snapshot.to_csv(folder/'scored_snapshot.csv',index=False,encoding='utf-8-sig')
         finished=valid_time()
-        m.update(status='completed_prerace',race_id=source['race_id'],cutoff_at=cutoff.isoformat(),score_generated_at=generated.isoformat(),files_written_at=finished.isoformat(),active_runners=int(entries.status.eq('active').sum()),unmatched_runners=int(ratings.identity_status.eq('unmatched').sum()),capture_manifest_sha256=sha(captured/'manifest.json'),files={name:sha(folder/name) for name in ['ratings.csv','verified_entries.csv','scored_snapshot.csv']})
+        m.update(status='completed_prerace',race_id=source['race_id'],cutoff_at=cutoff.isoformat(),score_generated_at=generated.isoformat(),files_written_at=finished.isoformat(),active_runners=int(entries.status.eq('active').sum()),evaluation_status_counts=ratings['評価状態'].value_counts().to_dict(),history_latest_date=str(pd.to_datetime(h.race_date).max().date()),unmatched_runners=int(ratings.identity_status.eq('unmatched').sum()),capture_manifest_sha256=sha(captured/'manifest.json'),files={name:sha(folder/name) for name in ['ratings.csv','verified_entries.csv','scored_snapshot.csv']})
     except Exception as exc:
         m['reason']=f'{type(exc).__name__}: {exc}'
         raise
