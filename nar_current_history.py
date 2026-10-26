@@ -11,12 +11,24 @@ import re
 import time
 from datetime import datetime, timedelta
 from html import unescape
+from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlencode, urljoin, urlparse, parse_qs
 import pandas as pd
 from nar_capture import BASE, JST, VENUES, fetch
 from nar_prerace_rating import parse_card, plain
 from nar_validation import REQUIRED, prepare, validate_results
+
+
+class ResultLinks(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.urls = []
+    def handle_starttag(self, tag, attrs):
+        if tag == 'a':
+            href = dict(attrs).get('href')
+            if href:
+                self.urls.append(href)
 
 
 def result_rows(html, day, venue, race, card):
@@ -137,7 +149,8 @@ def collect(start, as_of, venues, output, fetcher=fetch, pause=time.sleep):
             try:
                 listing = get('RaceList', day, venue)
                 races = set()
-                for href in re.findall(r'href=["\']([^"\']+)["\']', listing):
+                links = ResultLinks(); links.feed(listing)
+                for href in links.urls:
                     u = urlparse(urljoin(BASE, unescape(href))); q = parse_qs(u.query)
                     if (u.hostname in ('www.keiba.go.jp', 'keiba.go.jp') and u.path.endswith('/RaceMarkTable') and
                         q.get('k_raceDate') == [day.strftime('%Y/%m/%d')] and q.get('k_babaCode') == [str(VENUES[venue])]):
