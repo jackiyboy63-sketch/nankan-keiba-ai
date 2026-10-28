@@ -1,7 +1,8 @@
 """Collect complete official race results before a prediction day; no same-day results.
 
 Example: python nar_current_history.py --start 2026-10-01 --as-of 2026-10-26
-Only complete, unique finishing orders are accepted. Special results are quarantined.
+Complete finishing orders and explicitly marked dead heats are accepted.
+Verified nonstarters are recorded separately; unfinished runners are quarantined.
 """
 import argparse
 import hashlib
@@ -45,6 +46,8 @@ def result_rows(html, day, venue, race, card):
     if len(sections) != 1:
         raise ValueError('result table missing/ambiguous')
     rows = []
+    seen_ids = set()
+    nonstarters = []
     tie_marked_ranks = set()
     identities = card.set_index('official_horse_id')
     for block in re.findall(r'<tr\b[^>]*class=["\']tBorder["\'][^>]*>(.*?)</tr>', sections[0], re.S):
@@ -54,9 +57,17 @@ def result_rows(html, day, venue, race, card):
         ident = re.search(r'k_lineageLoginCode=(\d+)', unescape(block))
         if not ident or ident[1] not in identities.index:
             raise ValueError('result/card identity mismatch')
+        if ident[1] in seen_ids:
+            raise ValueError('duplicate result runner')
+        seen_ids.add(ident[1])
         e = identities.loc[ident[1]]
         if cells.get('d') != e['馬名'] or cells.get('c') != str(e['馬番']):
             raise ValueError('result/card runner mismatch')
+        if cells.get('a') in ('取消', '除外'):
+            if cells.get('k', '').strip() not in ('', '－', '-'):
+                raise ValueError('nonstarter has a recorded time')
+            nonstarters.append({'馬番': int(e['馬番']), '馬名': e['馬名'], 'status': cells['a']})
+            continue
         packed = re.fullmatch(r'(\d+):(\d{2})\.(\d)', cells.get('k', ''))
         if not packed or int(packed[2]) >= 60:
             raise ValueError('special/incomplete result time')
@@ -69,8 +80,8 @@ def result_rows(html, day, venue, race, card):
         if '同着' in cells.get('l', ''):
             tie_marked_ranks.add(cells.get('a'))
         rows.append(row)
-    if len(rows) != len(card):
-        raise ValueError('result/card runner set differs; quarantine scratches')
+    if seen_ids != set(identities.index):
+        raise ValueError('result/card runner set differs')
     frame = pd.DataFrame(rows)
     if frame.empty:
         raise ValueError('no completed results')
@@ -79,6 +90,7 @@ def result_rows(html, day, venue, race, card):
     if duplicate_ranks - tie_marked_ranks:
         raise ValueError('同着の明示がない順位重複')
     validate_results(prepare(frame), allow_dead_heats=True)
+    frame.attrs['nonstarters'] = nonstarters
     return frame
 
 
@@ -170,7 +182,10 @@ def collect(start, as_of, venues, output, fetcher=fetch, pause=time.sleep):
             for race in sorted(races):
                 try:
                     card, _, _, _ = parse_card(get('DebaTable', day, venue, race), day.isoformat(), venue, race)
-                    frames.append(result_rows(get('RaceMarkTable', day, venue, race), day.isoformat(), venue, race, card))
+                    frame = result_rows(get('RaceMarkTable', day, venue, race), day.isoformat(), venue, race, card)
+                    if frame.attrs.get('nonstarters'):
+                        manifest.setdefault('nonstarters', []).append(dict(day=day.isoformat(), venue=venue, race=race, runners=frame.attrs['nonstarters']))
+                    frames.append(frame)
                 except Exception as exc:
                     manifest['rejected'].append(dict(day=day.isoformat(), venue=venue, race=race, reason=str(exc)))
         day += timedelta(days=1)

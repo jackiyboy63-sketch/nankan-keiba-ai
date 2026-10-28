@@ -18,6 +18,13 @@ class CurrentHistoryTests(unittest.TestCase):
     def test_special_results_quarantined(self):
         for rank,clock in [('取消',''),('中止',''),('2','1:40.0')]:
             with self.assertRaises(ValueError):result_rows(self.result(rank,clock),'2026-10-23','大井',1,self.card())
+    def test_verified_nonstarter_is_excluded_from_runner_count(self):
+        card=self.card(); extra=card.iloc[0].copy(); extra['official_horse_id']='999'; extra['馬番']=2; extra['馬名']='取消馬'; extra['horse_key']='取消馬|id'; card=pd.concat([card,pd.DataFrame([extra])],ignore_index=True)
+        row='<tr class="tBorder"><td class="a">取消</td><td class="c">2</td><td class="d"><a href="?k_lineageLoginCode=999">取消馬</a></td><td class="k"></td></tr>'
+        html=self.result().replace('</table>',row+'</table>'); result=result_rows(html,'2026-10-23','大井',1,card)
+        self.assertEqual(len(result),1); self.assertEqual(result.iloc[0]['頭数'],1); self.assertEqual(result.attrs['nonstarters'][0]['status'],'取消')
+        with self.assertRaises(ValueError): result_rows(html.replace('取消</td>','中止</td>'),'2026-10-23','大井',1,card)
+        with self.assertRaises(ValueError): result_rows(html.replace('class="k"></td>','class="k">1:40.0</td>'),'2026-10-23','大井',1,card)
     def test_result_wrong_identity(self):
         with self.assertRaisesRegex(ValueError,'identity'):result_rows(self.result().replace('Code=123','Code=999'),'2026-10-23','大井',1,self.card())
     def test_merge_no_duplicate_baselines(self):
