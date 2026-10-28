@@ -57,7 +57,15 @@ jobs:
             echo 'RATING_HISTORY=data/processed/horse_history.csv' >> "$GITHUB_ENV"
             echo 'Current-month supplement unavailable; archived history used. Review history coverage before using scores.' >> "$GITHUB_STEP_SUMMARY"
           fi
+      - name: Check private Site connection
+        env:
+          NANKAN_SITE_URL: ${{ vars.NANKAN_SITE_URL }}
+          NANKAN_SITE_TOKEN: ${{ secrets.NANKAN_SITE_TOKEN }}
+        run: python nar_site_publish.py --check
       - name: Capture verified pre-race data
+        env:
+          NANKAN_SITE_URL: ${{ vars.NANKAN_SITE_URL }}
+          NANKAN_SITE_TOKEN: ${{ secrets.NANKAN_SITE_TOKEN }}
         run: python -u nar_cloud_prerace.py --minutes "$SESSION_MINUTES" --history "$RATING_HISTORY"
       - name: Save capture files and diagnostics
         if: always()
