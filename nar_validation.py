@@ -62,9 +62,14 @@ def validate_entries(entries):
         raise ValueError('馬番が欠損・不正・重複')
 
 
-def validate_results(entries):
+def validate_results(entries, allow_dead_heats=False):
     validate_entries(entries)
     f = entries['着順_num']
     # DNF/scratches/dead heats need explicit status rules. Quarantine, do not guess.
-    if f.isna().any() or sorted(f.tolist()) != list(range(1, len(entries) + 1)):
+    ranks = sorted(f.tolist())
+    valid = not f.isna().any() and ranks == list(range(1, len(entries) + 1))
+    if allow_dead_heats and not f.isna().any():
+        # Competition ranking: equal ranks share a place and skip occupied places.
+        valid = all(rank == ranks.index(rank) + 1 for rank in ranks)
+    if not valid:
         raise ValueError('完全な着順集合ではない（取消・中止・同着等を含む可能性）')

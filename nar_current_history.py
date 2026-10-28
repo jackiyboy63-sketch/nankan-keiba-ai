@@ -45,6 +45,7 @@ def result_rows(html, day, venue, race, card):
     if len(sections) != 1:
         raise ValueError('result table missing/ambiguous')
     rows = []
+    tie_marked_ranks = set()
     identities = card.set_index('official_horse_id')
     for block in re.findall(r'<tr\b[^>]*class=["\']tBorder["\'][^>]*>(.*?)</tr>', sections[0], re.S):
         cells = {}
@@ -65,6 +66,8 @@ def result_rows(html, day, venue, race, card):
                    距離=int(distance[1]), 馬場=going[1], 着順=cells.get('a'),
                    タイム=int(packed[1])*1000+int(packed[2])*10+int(packed[3]),
                    上がり3F=cells.get('m'), race_key=f'{venue}|{day.replace("-", "")}|{race}')
+        if '同着' in cells.get('l', ''):
+            tie_marked_ranks.add(cells.get('a'))
         rows.append(row)
     if len(rows) != len(card):
         raise ValueError('result/card runner set differs; quarantine scratches')
@@ -72,7 +75,10 @@ def result_rows(html, day, venue, race, card):
     if frame.empty:
         raise ValueError('no completed results')
     frame['頭数'] = len(frame)
-    validate_results(prepare(frame))
+    duplicate_ranks = set(frame.loc[frame['着順'].duplicated(keep=False), '着順'])
+    if duplicate_ranks - tie_marked_ranks:
+        raise ValueError('同着の明示がない順位重複')
+    validate_results(prepare(frame), allow_dead_heats=True)
     return frame
 
 
@@ -93,7 +99,7 @@ def merge_history(base, supplement, as_of):
                 d['競馬場'].astype(str) + '|' + pd.to_numeric(d['レース番号']).astype(int).astype(str))
     b['_race'] = keys(b); s['_race'] = keys(s)
     for _, group in s.groupby('_race'):
-        validate_results(prepare(group))
+        validate_results(prepare(group), allow_dead_heats=True)
     overlap = set(b._race) & set(s._race)
     compare = ['馬番', 'horse_key', '着順', 'タイム', '上がり3F', '距離', '馬場', '頭数']
     for race in overlap:
