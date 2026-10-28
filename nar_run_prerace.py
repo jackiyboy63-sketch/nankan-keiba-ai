@@ -55,6 +55,8 @@ def run(venue,race,history='data/processed/horse_history.csv',output='data/prera
         m['reason']=f'{type(exc).__name__}: {exc}'
         raise
     finally:(folder/'run_manifest.json').write_text(json.dumps(m,ensure_ascii=False,indent=2),encoding='utf-8')
+    from nar_site_publish import attempt_delivery
+    attempt_delivery(folder)
     print(ratings[['馬番','馬名','評価点','確かさ(%)','identity_status']].to_string(index=False))
     print('Saved:',folder)
     return folder
