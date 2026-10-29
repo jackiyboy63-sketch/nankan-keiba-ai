@@ -46,9 +46,18 @@ def fit_calibration(training, *, label='won', min_races=30, alpha=10):
     need={'race_id','score',label,'race_date'}
     if not need.issubset(training): raise ValueError('missing training columns')
     d=training.copy()
+    if not isinstance(min_races, int) or isinstance(min_races, bool) or min_races < 1:
+        raise ValueError('invalid minimum training races')
+    if not np.isfinite(alpha) or alpha <= 0:
+        raise ValueError('invalid smoothing strength')
+    if d.empty or d.race_id.isna().any() or d.race_id.astype(str).str.strip().eq('').any():
+        raise ValueError('missing training race IDs')
+    dates=pd.to_datetime(d.race_date,errors='coerce')
+    if dates.isna().any() or d.assign(_date=dates).groupby('race_id')._date.nunique().gt(1).any():
+        raise ValueError('invalid or inconsistent training dates')
     d['score']=pd.to_numeric(d.score,errors='coerce')
     d[label]=pd.to_numeric(d[label],errors='coerce')
-    if d[['score',label]].isna().any().any() or not d[label].isin([0,1]).all(): raise ValueError('invalid labels')
+    if not np.isfinite(d[['score',label]].to_numpy(dtype=float)).all() or not d[label].isin([0,1]).all(): raise ValueError('invalid labels/scores')
     if d.race_id.nunique()<min_races: raise ValueError('insufficient training races')
     # Train score-bin cutoffs once; never fit on evaluation observations.
     edges=np.unique(np.quantile(d.score,np.linspace(0,1,6)))
@@ -65,6 +74,12 @@ def fit_calibration(training, *, label='won', min_races=30, alpha=10):
 def calibrated_probability(scores, model):
     x=pd.to_numeric(scores,errors='coerce').to_numpy(dtype=float)
     if not np.isfinite(x).all(): raise ValueError('nonfinite scores')
+    edges=np.asarray(model['edges'],dtype=float)
+    rates=np.asarray(model['rates'],dtype=float)
+    if edges.ndim!=1 or rates.ndim!=1 or len(edges)<2 or len(rates)!=len(edges)-1:
+        raise ValueError('invalid calibration dimensions')
+    if not np.isfinite(edges).all() or not (np.diff(edges)>0).all() or not np.isfinite(rates).all() or ((rates<0)|(rates>1)).any():
+        raise ValueError('invalid calibration values')
     return np.array(model['rates'])[np.searchsorted(model['edges'][1:-1],x,side='right')]
 
 
@@ -77,10 +92,15 @@ def decide(snapshot, calibration, *, as_of, daily_cap=5000, min_edge=0.05, stake
     d=validate_snapshot(snapshot)
     now=parse_time(as_of)
     if (d.snapshot_at > now).any() or (d.cutoff_at <= now).any(): raise ValueError('as_of outside valid pre-race window')
-    if calibration is None: return pd.DataFrame(columns=['race_id','horse_no','type','probability','odds','edge','stake_yen','reason'])
-    if any(pd.Timestamp(m['training_end'],tz='UTC') >= d.snapshot_at.min() for m in calibration.values() if m):
-        raise ValueError('calibration overlaps prediction period')
     if not (0<=already_spent<=daily_cap): raise ValueError('invalid budget')
+    if calibration is None: return pd.DataFrame(columns=['race_id','horse_no','type','probability','odds','edge','stake_yen','reason'])
+    prediction_day=d.snapshot_at.dt.tz_convert('Asia/Tokyo').dt.date.min()
+    for m in calibration.values():
+        if not m: continue
+        end=pd.to_datetime(m.get('training_end'),errors='coerce')
+        if end is None or pd.isna(end): raise ValueError('invalid calibration training end')
+        if end.date() >= prediction_day:
+            raise ValueError('calibration overlaps prediction period')
     remaining=daily_cap-already_spent
     if remaining<stake: return pd.DataFrame(columns=['race_id','horse_no','type','probability','odds','edge','stake_yen','reason'])
     # Only one ticket per race; no fabricated pair probabilities.
