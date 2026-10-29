@@ -43,8 +43,12 @@ def compare(folder, results):
     if m['race_id'] != f'{day}_{VENUES[venue]}_{race:02d}':
         raise ValueError('race identity invalid')
     r = results[(results.race_date == pd.Timestamp(day)) & (results['競馬場'] == venue) & (pd.to_numeric(results['レース番号'], errors='coerce') == race)].copy()
-    validate_results(r)  # conservative: no partial results, scratches, DNF or dead heats
+    validate_results(r, allow_dead_heats=True)
     r['馬番'] = pd.to_numeric(r['馬番'], errors='raise').astype(int)
+    if not entries.status.isin(['active', 'excluded']).all():
+        raise ValueError('unsupported source runner status')
+    excluded_numbers = set(entries.loc[entries.status.eq('excluded'), '馬番'])
+    entries = entries.loc[entries.status.eq('active')].copy()
     if set(r['馬番']) != set(entries['馬番']):
         raise ValueError('result/source runner set differs')
     identity = entries[['馬番','馬名','horse_key']].merge(r[['馬番','馬名','horse_key']],on='馬番',suffixes=('_before','_result'),validate='one_to_one')
@@ -54,7 +58,12 @@ def compare(folder, results):
         raise ValueError('excluded runners require separate result rules')
     rating = data['ratings.csv'].copy()
     rating['馬番'] = pd.to_numeric(rating['馬番'],errors='raise')
-    if rating['馬番'].duplicated().any() or set(rating['馬番']) != set(r['馬番']):
+    if rating['馬番'].duplicated().any():
+        raise ValueError('duplicate rating horse number')
+    if not (set(rating['馬番']) - set(r['馬番'])).issubset(excluded_numbers):
+        raise ValueError('unexpected rating runner')
+    rating = rating.loc[~rating['馬番'].isin(excluded_numbers)].copy()
+    if set(rating['馬番']) != set(r['馬番']):
         raise ValueError('rating/result runner set differs')
     scored = rating[['馬番','馬名','評価点','確かさ(%)','identity_status']].merge(r[['馬番','馬名','着順_num']],on='馬番',suffixes=('','_result'),validate='one_to_one')
     if scored['馬名'].ne(scored['馬名_result']).any():
@@ -119,7 +128,7 @@ def report(runs, results_path, output='data/prerace_comparisons'):
         selection='earliest completed run by files_written_at; invalid earliest excluded',
         compared_races=len(accepted), skipped_races=len(skipped), races=accepted, skipped=skipped, files=files,
         limitations=['monthly imported results; official result fetching not included',
-            'scratches, DNF, dead heats and partial result races excluded',
+            'pre-recorded exclusions and complete dead-heat ranks supported; DNF and unexplained runner differences excluded',
             'local clocks and hashes do not independently authenticate pre-race time',
             'no purchase records, payout or ROI calculation; no rerating or automatic model changes'])
     (out/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding='utf-8')

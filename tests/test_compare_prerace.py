@@ -69,10 +69,44 @@ class CompareTests(unittest.TestCase):
             parts=self.fixture(t);(Path(t)/'capture/manifest.json').write_text('changed')
             with self.assertRaisesRegex(ValueError,'hash'):self.call(t,parts)
 
-    def test_dead_heat_rejected(self):
+    def test_valid_dead_heat_accepted(self):
         with tempfile.TemporaryDirectory() as t:
-            parts=self.fixture(t);parts[1].loc[0,'着順_num']=3
-            with self.assertRaises(ValueError):self.call(t,parts)
+            parts=self.fixture(t)
+            parts[1].loc[0,'着順_num']=3
+            _, summary=self.call(t,parts)
+            self.assertEqual(summary['leader_finishes'],[3])
+            self.assertEqual(summary['actual_top3_captured'],3)
+
+    def test_invalid_dead_heat_ranks_rejected(self):
+        with tempfile.TemporaryDirectory() as t:
+            parts=self.fixture(t)
+            parts[1]['着順_num']=[3,1,2,2]
+            with self.assertRaises(ValueError):
+                self.call(t,parts)
+
+    def test_recorded_excluded_runner_accepted(self):
+        with tempfile.TemporaryDirectory() as t:
+            parts=list(self.fixture(t))
+            extra=parts[2].iloc[[0]].copy()
+            extra['馬番']=5
+            extra['馬名']='除外馬'
+            extra['horse_key']='key5'
+            extra['status']='excluded'
+            parts[2]=pd.concat([parts[2],extra],ignore_index=True)
+            _, summary=self.call(t,parts)
+            self.assertEqual(summary['runners'],4)
+
+    def test_missing_active_runner_rejected(self):
+        with tempfile.TemporaryDirectory() as t:
+            parts=list(self.fixture(t))
+            extra=parts[2].iloc[[0]].copy()
+            extra['馬番']=5
+            extra['馬名']='未収録馬'
+            extra['horse_key']='key5'
+            extra['status']='active'
+            parts[2]=pd.concat([parts[2],extra],ignore_index=True)
+            with self.assertRaises(ValueError):
+                self.call(t,parts)
 
     def test_report_earliest_only_and_empty(self):
         with tempfile.TemporaryDirectory() as t:
