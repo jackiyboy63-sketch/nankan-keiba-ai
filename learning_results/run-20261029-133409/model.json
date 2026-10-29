@@ -1,0 +1,90 @@
+{
+  "preprocessing": {
+    "median": [
+      0.5333333333333333,
+      0.0,
+      0.8664431480183374,
+      0.4984375000000001,
+      1.9459101490553132,
+      23.0,
+      0.0,
+      1.0
+    ],
+    "mean": [
+      0.528742660762686,
+      0.10131950903685871,
+      0.8515713366924755,
+      0.48801667852127445,
+      1.9001711104382537,
+      33.14313071072933,
+      0.1147617223833233,
+      0.7589319910269738
+    ],
+    "scale": [
+      0.2291268008042899,
+      0.20340603857045508,
+      0.09759431899538631,
+      0.09646805836904458,
+      0.5891811448446305,
+      33.61341000670507,
+      0.1673779861083307,
+      0.4277314858913325
+    ]
+  },
+  "weights": [
+    0.7743085366035444,
+    0.07915925192278232,
+    0.32260622395537464,
+    -0.13799911298031822,
+    -0.35649955253874793,
+    -0.027340815138034286,
+    -0.0399884057593219,
+    0.04965375709391693,
+    -0.002276676718825004,
+    -0.002276676718825004,
+    -0.002276676718825004,
+    -0.002276676718825004,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "temperature": 1.0,
+  "manifest": {
+    "input_sha256": "d0c669de44b44e41edf7c959e1a1e3b9c2fc33c20c4d2fac43f6411631a8e9d5",
+    "source_start": "2024-11-05",
+    "train": [
+      "2025-01-01",
+      "2025-12-31"
+    ],
+    "calibration": [
+      "2026-01-01",
+      "2026-05-31"
+    ],
+    "evaluation": [
+      "2026-06-01",
+      "2026-09-30"
+    ],
+    "features": [
+      "form5",
+      "win5",
+      "clock5",
+      "closing5",
+      "log_starts",
+      "rest_days",
+      "distance_change",
+      "same_track"
+    ],
+    "temperature": 1.0,
+    "training_races": 1621,
+    "calibration_races": 800,
+    "limitations": [
+      "result-derived entries and final metadata; retrospective, not verified live inputs",
+      "no historical pre-race odds; no EV or ROI claims",
+      "abnormal/dead-heat races and races with a runner lacking history excluded",
+      "2026-06 through 09 previously inspected for v1/v2; not untouched project-level holdout",
+      "no rolling retraining; fixed chronological split",
+      "not deployed; no automatic purchase"
+    ]
+  }
+}
