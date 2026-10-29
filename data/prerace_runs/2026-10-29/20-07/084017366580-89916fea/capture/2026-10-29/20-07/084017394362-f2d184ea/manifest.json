@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "race_id": "2026-10-29_20_07",
+  "venue": "大井",
+  "race": 7,
+  "status": "accepted_capture",
+  "pages": [
+    {
+      "url": "https://www.keiba.go.jp/KeibaWeb/TodayRaceInfo/DebaTable?k_raceDate=2026%2F10%2F29&k_babaCode=20&k_raceNo=7&odds_flg=4",
+      "received_at": "2026-10-29T08:40:19.035423+00:00",
+      "sha256": "968853eb9dfff0ea19d210687a82c95dca49217e834c59e9656b88e6c605ed0a",
+      "headers": {
+        "Content-Type": "text/html; charset=UTF-8",
+        "Date": "Thu, 29 Oct 2026 08:40:18 GMT"
+      }
+    },
+    {
+      "url": "https://www.keiba.go.jp/KeibaWeb/TodayRaceInfo/OddsTanFuku?k_raceDate=2026%2F10%2F29&k_babaCode=20&k_raceNo=7&odds_flg=4",
+      "received_at": "2026-10-29T08:40:19.396907+00:00",
+      "sha256": "6e5a51bb840c733b3a0aa236ff0438ef90500ff60459eb19442e08cae879befe",
+      "headers": {
+        "Content-Type": "text/html; charset=UTF-8",
+        "Date": "Thu, 29 Oct 2026 08:40:19 GMT"
+      }
+    }
+  ],
+  "limitations": [
+    "local receipt clock, not independent timestamp authentication",
+    "scheduled start only; no delayed-start inference",
+    "no score generation or v3 decision input export"
+  ],
+  "cutoff_at": "2026-10-29T17:45:00+09:00",
+  "snapshot_at": "2026-10-29T08:40:19.396907+00:00",
+  "runners": 11
+}

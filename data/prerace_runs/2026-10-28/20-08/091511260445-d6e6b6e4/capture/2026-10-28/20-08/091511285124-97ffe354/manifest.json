@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "race_id": "2026-10-28_20_08",
+  "venue": "大井",
+  "race": 8,
+  "status": "accepted_capture",
+  "pages": [
+    {
+      "url": "https://www.keiba.go.jp/KeibaWeb/TodayRaceInfo/DebaTable?k_raceDate=2026%2F10%2F28&k_babaCode=20&k_raceNo=8&odds_flg=4",
+      "received_at": "2026-10-28T09:15:13.116755+00:00",
+      "sha256": "8edd3d3b6a4271f8aa3595c27ef38ae1b0256545587ed73b779623a3e6eb0a2c",
+      "headers": {
+        "Content-Type": "text/html; charset=UTF-8",
+        "Date": "Wed, 28 Oct 2026 09:15:12 GMT"
+      }
+    },
+    {
+      "url": "https://www.keiba.go.jp/KeibaWeb/TodayRaceInfo/OddsTanFuku?k_raceDate=2026%2F10%2F28&k_babaCode=20&k_raceNo=8&odds_flg=4",
+      "received_at": "2026-10-28T09:15:13.502231+00:00",
+      "sha256": "3c2b0a813c1fd45d476601d7ae8a0834c07dbed6f2a8d4eef0843743c690a73c",
+      "headers": {
+        "Content-Type": "text/html; charset=UTF-8",
+        "Date": "Wed, 28 Oct 2026 09:15:13 GMT"
+      }
+    }
+  ],
+  "limitations": [
+    "local receipt clock, not independent timestamp authentication",
+    "scheduled start only; no delayed-start inference",
+    "no score generation or v3 decision input export"
+  ],
+  "cutoff_at": "2026-10-28T18:20:00+09:00",
+  "snapshot_at": "2026-10-28T09:15:13.502231+00:00",
+  "runners": 11
+}

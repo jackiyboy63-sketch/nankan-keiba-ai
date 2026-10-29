@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "status": "completed_prerace",
+  "venue": "大井",
+  "race": 12,
+  "started_at": "2026-10-28T11:45:23.221562+00:00",
+  "history_sha256": "b62f614a4b85253be04ad6ebe776b477c7b96d302f88abc7c717529400a4ac31",
+  "max_age_seconds": 180,
+  "limitations": [
+    "existing v2 score, not calibrated probability",
+    "local clock; no independent timestamp authentication",
+    "no v3 decision export or purchase"
+  ],
+  "capture_relative_path": "capture/2026-10-28/20-12/114523246164-9c91fa27",
+  "race_id": "2026-10-28_20_12",
+  "cutoff_at": "2026-10-28T20:50:00+09:00",
+  "score_generated_at": "2026-10-28T11:45:26.387927+00:00",
+  "files_written_at": "2026-10-28T11:45:26.393408+00:00",
+  "active_runners": 12,
+  "evaluation_status_counts": {
+    "評価可能": 12
+  },
+  "history_latest_date": "2026-10-27",
+  "unmatched_runners": 0,
+  "capture_manifest_sha256": "a9ed1610c6f41d29c1da78ec32c7f12c058fdc759c39cbe69e8e63c9eaacfc4f",
+  "files": {
+    "ratings.csv": "a6b21224eba42bb8e71ed54e34e7cf38eea10712513743005f65baae4166171b",
+    "verified_entries.csv": "a617a6c66f6eae3afe0cb043ba4c4d08c94dc9176de185b15e43c426b9d8e0fd",
+    "scored_snapshot.csv": "083c1c2b4acbc8b7391f07167eef013052945d02d18f4fec6d12eb2fd917c5dd"
+  }
+}
