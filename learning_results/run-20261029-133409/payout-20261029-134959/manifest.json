@@ -1,0 +1,121 @@
+{
+  "sources": [
+    {
+      "path": "202608_1792429475_race.zip",
+      "sha256": "d2d1e623675e8a100fe0702eba0065399ac7f57c459d1f27f687cd155b531477"
+    },
+    {
+      "path": "202609_1792429381_race.zip",
+      "sha256": "138f376dea41d523b8c97f22a7edb48be65892aa2b24414716a362718806414d"
+    },
+    {
+      "path": "data/202410_official_race.zip",
+      "sha256": "bfe4e45f02e7253a80d8eacfa807ef22b9024b4d257525b629ad6b26c05d2939"
+    },
+    {
+      "path": "data/202411_official_race.zip",
+      "sha256": "fce8f0392685462cb1d697ffead0a941d0ad8ca7beffd3678edd3fbc38f70ace"
+    },
+    {
+      "path": "data/202412_official_race.zip",
+      "sha256": "7668648d2bf3dcf02f0afab123eea5746b6a67fd7e49c628635c61eba36d09da"
+    },
+    {
+      "path": "data/202501_official_race.zip",
+      "sha256": "d51466e61c60d5719e80c658d84a7270c3e2cb6027ec32f2b4a3fe0f29c5c595"
+    },
+    {
+      "path": "data/202502_official_race.zip",
+      "sha256": "2580d86d17d8b6bb14b077cb242cfea662c7195ab977512d001cad5060e77d87"
+    },
+    {
+      "path": "data/202503_official_race.zip",
+      "sha256": "24f468420201f91b295fecafca656893cc866d70ee779782a8781f566930626d"
+    },
+    {
+      "path": "data/202504_official_race.zip",
+      "sha256": "0b79f6e7e699f01f639c42b9a79f0d5dfa1042326ad8f6f76be02b4e1e76a218"
+    },
+    {
+      "path": "data/202505_official_race.zip",
+      "sha256": "9139ac9b48f61b368ef61de01497ae4f0d13c4c6c81bd5d4f76e29d1558838b2"
+    },
+    {
+      "path": "data/202506_official_race.zip",
+      "sha256": "f9fb7ae52494448f5abf1c63becdd13b5d9ada1cee88a5d35e9cfe06f5a02f70"
+    },
+    {
+      "path": "data/202507_official_race.zip",
+      "sha256": "cf70685269d5eda1767c00498f44ad5a50835dfc7a3fd30e15b67ef6dfdbaa45"
+    },
+    {
+      "path": "data/202508_official_race.zip",
+      "sha256": "897c1a6fcf6945a81f8b61a55a3c78fd10049dcf45ff03c0a36662c24d12763e"
+    },
+    {
+      "path": "data/202509_official_race.zip",
+      "sha256": "ad1b3795b8c02a026772afda41928be0d12fec17f0df0d1fd270ad0d3e5d9b72"
+    },
+    {
+      "path": "data/202510_official_race.zip",
+      "sha256": "c1d22ac07759895fdb287febbf751c34950a17f0d46e4ce6444ef579d7fb4563"
+    },
+    {
+      "path": "data/202511_official_race.zip",
+      "sha256": "777edd1592758ed74c05f3556b99f64367adc1832c923e11578c4792b91be02f"
+    },
+    {
+      "path": "data/202512_official_race.zip",
+      "sha256": "4d6f6480f148e550d60bc3d86d0f11226f579b64acd372fb50b0844a30f52287"
+    },
+    {
+      "path": "data/202601_official_race.zip",
+      "sha256": "871928351eca4d2cd0f0346d5318db251ccc86fcc63477c6fa5bad06696f9ced"
+    },
+    {
+      "path": "data/202602_official_race.zip",
+      "sha256": "19446594eb1d67848bc42cebd990fbd5c7f2ced7fc8866593d66b6d7b3a51385"
+    },
+    {
+      "path": "data/202603_official_race.zip",
+      "sha256": "844a2f9146226e99f5817f9018cfef09a3f10499d0c3f9d2e1cc466de0621565"
+    },
+    {
+      "path": "data/202604_official_race.zip",
+      "sha256": "5eba1305f268d29fe0363f0155d60c66c67db4f40c4c0bcde3f42645d3dc6c2c"
+    },
+    {
+      "path": "data/202605_official_race.zip",
+      "sha256": "c59865f6223e8749fb63d9ee43c41e1a01c3cd3e71f8e50e3647f750173fbb2a"
+    },
+    {
+      "path": "data/202606_official_race.zip",
+      "sha256": "90a524f2f9d0679448f5ebb72501fb14a258d059ed0580a6f07185d81ec8e859"
+    },
+    {
+      "path": "data/202607_official_race.zip",
+      "sha256": "31ef6302ddb95e2b2cd4b9758c28b292d3cc93ebc4122592788ffffb59a89b5f"
+    },
+    {
+      "path": "nar-current-history-40831811612.zip",
+      "sha256": "82b5478341cc3122f9daaad7e866ec3898ba0d99e120c26b21839e32c20d7b80"
+    },
+    {
+      "path": "nar-ev-guardrails-20261029.zip",
+      "sha256": "7899089cb5595f3d30e37a83d325eab68298c99c4a928582b488d887dd5208e8"
+    },
+    {
+      "path": "nar-historical-learning-20261029.zip",
+      "sha256": "8514575659e750c968544500191e675d7b1506428de70a5f8518e31428bf38d0"
+    },
+    {
+      "path": "nar-prerace-40646263735-1.zip",
+      "sha256": "97bcab3cf029bb16f72545ed9e2badace7ace4c2b5898086f6d09876c99894cc"
+    },
+    {
+      "path": "nar-prerace-40831811612-1.zip",
+      "sha256": "a60657a07f6625203008835623b4abb2278427e2ce79878c041534b7f2543285"
+    }
+  ],
+  "note": "各方式は独立した100円固定買い。期待値選別なし。"
+}
