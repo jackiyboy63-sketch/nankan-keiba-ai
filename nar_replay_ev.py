@@ -7,9 +7,32 @@ import pandas as pd
 from nar_learn_history import features,predict
 
 
+def align_entry_keys(history, entries, day):
+    """Only align complete identity when ASCII pedigree spacing is the sole difference."""
+    def token(key):
+        parts=str(key).split('|')
+        if len(parts)!=4 or not all(parts): return None
+        return tuple(parts[:2]+[v.replace(' ','') for v in parts[2:]])
+    dates=pd.to_datetime(history.race_date,errors='raise')
+    keys=set(history.loc[dates.lt(pd.Timestamp(day)),'horse_key'].dropna().astype(str))
+    lookup={}
+    for key in keys:
+        t=token(key)
+        if t is not None:lookup.setdefault(t,set()).add(key)
+    e=entries.copy();aligned=[]
+    for key in e.horse_key:
+        if key in keys:aligned.append(key);continue
+        matches=lookup.get(token(key),set())
+        if len(matches)>1:raise ValueError('空白補正後の馬識別子が一意でないため保留')
+        aligned.append(next(iter(matches)) if matches else key)
+    e['horse_key']=aligned
+    return e
+
+
 def make_frame(history, entries, day, track, distance, race_id):
     e=entries.copy()
     if e.empty or not {'馬番','horse_key'}.issubset(e): raise ValueError('出走馬不足')
+    e=align_entry_keys(history,e,day)
     nums=pd.to_numeric(e['馬番'],errors='coerce')
     if nums.isna().any() or nums.duplicated().any() or nums.le(0).any() or nums.mod(1).ne(0).any(): raise ValueError('馬番不正')
     if e.horse_key.isna().any() or e.horse_key.duplicated().any(): raise ValueError('馬識別子不正')
