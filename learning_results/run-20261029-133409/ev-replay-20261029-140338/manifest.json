@@ -1,0 +1,38 @@
+{
+  "mode": "retrospective_replay_not_live",
+  "generated_at": "2026-10-29T14:05:31.373554+00:00",
+  "model_sha256": "6fdc10cfa6c08f2c12f1e44c8fb01a6f12d69321f67290150a7a2304651f7038",
+  "history_sha256": "72fb7a532685109c0789c70412c54ca7d1d2ca12dfa4c0d83ca4ec0ca5ef20b3",
+  "selected_source_runs": {
+    "2026-10-28_20_06": "data/prerace_runs/2026-10-28/20-06/080703198802-64799d88/run_manifest.json",
+    "2026-10-28_20_07": "data/prerace_runs/2026-10-28/20-07/084005745885-4ef01550/run_manifest.json",
+    "2026-10-28_20_08": "data/prerace_runs/2026-10-28/20-08/091511260445-d6e6b6e4/run_manifest.json",
+    "2026-10-28_20_09": "data/prerace_runs/2026-10-28/20-09/095014957705-fcc2654b/run_manifest.json",
+    "2026-10-28_20_10": "data/prerace_runs/2026-10-28/20-10/102517489480-f1f4bd1b/run_manifest.json",
+    "2026-10-28_20_11": "data/prerace_runs/2026-10-28/20-11/110520504116-d7b8a788/run_manifest.json",
+    "2026-10-28_20_12": "data/prerace_runs/2026-10-28/20-12/114523221562-b499dd85/run_manifest.json",
+    "2026-10-29_20_06": "data/prerace_runs/2026-10-29/20-06/080713674897-70611bf6/run_manifest.json",
+    "2026-10-29_20_07": "data/prerace_runs/2026-10-29/20-07/084017366580-89916fea/run_manifest.json",
+    "2026-10-29_20_08": "data/prerace_runs/2026-10-29/20-08/091522478363-f3fbf651/run_manifest.json",
+    "2026-10-29_20_09": "data/prerace_runs/2026-10-29/20-09/095027381205-124146b3/run_manifest.json",
+    "2026-10-29_20_10": "data/prerace_runs/2026-10-29/20-10/102501156846-4be75ed3/run_manifest.json",
+    "2026-10-29_20_11": "data/prerace_runs/2026-10-29/20-11/110506817551-cf1e8392/run_manifest.json",
+    "2026-10-29_20_12": "data/prerace_runs/2026-10-29/20-12/114511837804-2d379904/run_manifest.json"
+  },
+  "input_races": 14,
+  "probability_races": 4,
+  "unavailable_records": 10,
+  "candidate_races": 4,
+  "policy": {
+    "min_win_odds": 10,
+    "min_expected_return_ratio": 1.05,
+    "stake_yen": 100,
+    "daily_cap_yen": 5000
+  },
+  "limitations": [
+    "model created after recorded races; not prospective validation",
+    "prior-date historical records may have later corrections; availability not independently proven",
+    "odds can change before closing; 5 percent edge is exploratory, not validated",
+    "no settlement, ROI claim, automatic purchase or live site changes"
+  ]
+}
