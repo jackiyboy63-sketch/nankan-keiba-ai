@@ -1,0 +1,17 @@
+{
+  "selected_calibrator": {
+    "family": "original",
+    "calibration_log_loss": 1.976963926733998
+  },
+  "calibration_races": 800,
+  "evaluation_races": 709,
+  "base_model_sha256": "6fdc10cfa6c08f2c12f1e44c8fb01a6f12d69321f67290150a7a2304651f7038",
+  "history_sha256": "d0c669de44b44e41edf7c959e1a1e3b9c2fc33c20c4d2fac43f6411631a8e9d5",
+  "selection": "Jan-May winner log loss only; no evaluation outcomes passed to choose",
+  "limitations": [
+    "June-Sept has already been inspected in this project; exploratory, not untouched final validation",
+    "global calibration does not validate longshot/odds-conditioned profitability",
+    "all transforms preserve within-race ordering except numerical ties; no top-rank improvement expected",
+    "no EV threshold tuning, no live changes, no revenue claim"
+  ]
+}
